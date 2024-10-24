@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block title %}Student Information{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Student Certificate Information</h1>
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">{{ student.student_name }}</h5>
+            <p class="card-text"><strong>Student ID:</strong> {{ student.student_id }}</p>
+            <p class="card-text"><strong>Program:</strong> {{ student.programm }}</p>
+            <p class="card-text"><strong>Degree Obtained:</strong> {{ student.degree_obtained }}</p>
+            <p class="card-text"><strong>Issuer:</strong> {{ student.issuer.name_en }}</p>
+            <p class="card-text"><strong>Issue Date:</strong> {{ student.issue_date|date:"F d, Y" }}</p>
+        </div>
+    </div>
+    <div class="mt-4">
+        <a href="{% url 'certifications:verify' student.id %}" class="btn btn-primary">Verify Certificate</a>
+    </div>
+</div>
+{% endblock %}

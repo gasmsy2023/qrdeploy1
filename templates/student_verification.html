@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block title %}Student Verification{% endblock %}
+
+{% block content %}
+<h1>Student Verification</h1>
+<div class="student-info">
+    <h2>{{ student.student_name }}</h2>
+    <p><strong>Student ID:</strong> {{ student.student_id }}</p>
+    <p><strong>Program:</strong> {{ student.programm }}</p>
+    <p><strong>Degree Obtained:</strong> {{ student.degree_obtained }}</p>
+    <p><strong>Issuer:</strong> {{ student.issuer.name_en }}</p>
+    <p><strong>Issue Date:</strong> {{ student.issue_date|date:"F d, Y" }}</p>
+</div>
+{% if student.qr_code %}
+<div class="qr-code">
+    <img src="{{ student.qr_code.url }}" alt="QR Code">
+</div>
+{% endif %}
+<a href="{% url 'certifications:index' %}" class="btn btn-primary">Back to All Students</a>
+{% endblock %}
