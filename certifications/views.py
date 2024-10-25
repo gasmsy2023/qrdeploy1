@@ -47,6 +47,41 @@ def download_sample_csv(request):
     
     return response
 
+def generate_qr_code(student_id):
+    """Generate a single QR code for a student"""
+    qr_customization = QRCodeCustomization.objects.first()
+    if not qr_customization:
+        qr_customization = QRCodeCustomization.objects.create()
+
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(f"{settings.BASE_URL}/certificate/student-qr-info/{student_id}/")
+    qr.make(fit=True)
+
+    qr_img = qr.make_image(fill_color=qr_customization.foreground_color, back_color=qr_customization.background_color)
+
+    if qr_customization.logo:
+        logo = Image.open(qr_customization.logo.path)
+        logo_size = (qr_img.size[0] // 4, qr_img.size[1] // 4)
+        logo = logo.resize(logo_size, Image.LANCZOS)
+        pos = ((qr_img.size[0] - logo.size[0]) // 2, (qr_img.size[1] - logo.size[1]) // 2)
+        qr_img.paste(logo, pos, logo)
+
+    # Save QR code image to media storage
+    qr_buffer = io.BytesIO()
+    qr_img.save(qr_buffer, format="PNG")
+    qr_buffer.seek(0)
+    
+    qr_code_path = f'qr_codes/student_{student_id}.png'
+    default_storage.save(qr_code_path, ContentFile(qr_buffer.getvalue()))
+    
+    # Return the full URL for the QR code
+    return f"{settings.BASE_URL}{settings.MEDIA_URL}{qr_code_path}"
+
 def upload_csv(request):
     if request.method == 'POST':
         if 'csv_file' not in request.FILES:
@@ -83,6 +118,12 @@ def upload_csv(request):
                             degree_obtained=row['degree_obtained'],
                             issuer=issuer
                         )
+                        
+                        # Generate QR code for the student
+                        qr_code_url = generate_qr_code(student.id)
+                        student.qr_code_link = qr_code_url
+                        student.save()
+                        
                         success_count += 1
                     except Exception as e:
                         error_count += 1
@@ -116,51 +157,6 @@ def student_qr_info(request, student_id):
     }
     return render(request, 'student_qr_info.html', context)
 
-def generate_qr_code(student_id, customization):
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=10,
-        border=4,
-    )
-    qr.add_data(f"{settings.BASE_URL}/certificate/student-qr-info/{student_id}/")
-    qr.make(fit=True)
-
-    qr_img = qr.make_image(fill_color=customization.foreground_color, back_color=customization.background_color)
-
-    if customization.logo:
-        logo = Image.open(customization.logo.path)
-        logo_size = (qr_img.size[0] // 4, qr_img.size[1] // 4)
-        logo = logo.resize(logo_size, Image.LANCZOS)
-        pos = ((qr_img.size[0] - logo.size[0]) // 2, (qr_img.size[1] - logo.size[1]) // 2)
-        qr_img.paste(logo, pos, logo)
-
-    return qr_img
-
-def generate_qr_codes(request):
-    students = Student.objects.all()
-    qr_customization = QRCodeCustomization.objects.first()
-    if not qr_customization:
-        qr_customization = QRCodeCustomization.objects.create()
-
-    for student in students:
-        qr_img = generate_qr_code(student.id, qr_customization)
-        qr_buffer = io.BytesIO()
-        qr_img.save(qr_buffer, format="PNG")
-        qr_buffer.seek(0)
-        
-        # Save QR code image to media storage
-        qr_code_path = f'qr_codes/student_{student.id}.png'
-        default_storage.save(qr_code_path, ContentFile(qr_buffer.getvalue()))
-        
-        # Store QR code link in the database with fully qualified domain
-        qr_code_url = f"{settings.BASE_URL}{settings.MEDIA_URL}{qr_code_path}"
-        student.qr_code_link = qr_code_url
-        student.save()
-
-    messages.success(request, f'Generated QR codes for {len(students)} students.')
-    return redirect('certifications:index')
-
 def download_qr_codes(request):
     students = Student.objects.all()
     
@@ -183,11 +179,12 @@ def download_qr_codes(request):
                 student.qr_code_link
             ])
             
-            # Add QR code image to zip file
-            qr_code_path = f'qr_codes/student_{student.id}.png'
-            if default_storage.exists(qr_code_path):
-                with default_storage.open(qr_code_path, 'rb') as qr_file:
-                    zip_file.writestr(f'qr_codes/student_{student.id}.png', qr_file.read())
+            # Add QR code image to zip file if it exists
+            if student.qr_code_link:
+                qr_code_path = f'qr_codes/student_{student.id}.png'
+                if default_storage.exists(qr_code_path):
+                    with default_storage.open(qr_code_path, 'rb') as qr_file:
+                        zip_file.writestr(f'qr_codes/student_{student.id}.png', qr_file.read())
         
         # Add CSV file to zip
         zip_file.writestr('student_data.csv', csv_buffer.getvalue())
@@ -235,7 +232,12 @@ def edit_student(request, student_id):
         form = StudentForm(request.POST, instance=student)
         if form.is_valid():
             try:
-                form.save()
+                student = form.save()
+                # Regenerate QR code if it doesn't exist
+                if not student.qr_code_link:
+                    qr_code_url = generate_qr_code(student.id)
+                    student.qr_code_link = qr_code_url
+                    student.save()
                 messages.success(request, f'Student record updated for {student.student_name}')
                 return redirect('certifications:index')
             except IntegrityError:
@@ -283,6 +285,11 @@ def verify_issuer(request, uuid):
 def delete_student(request, student_id):
     student = get_object_or_404(Student, id=student_id)
     if request.method == 'POST':
+        # Delete the QR code file if it exists
+        if student.qr_code_link:
+            qr_code_path = f'qr_codes/student_{student.id}.png'
+            if default_storage.exists(qr_code_path):
+                default_storage.delete(qr_code_path)
         student.delete()
         messages.success(request, f'Student record deleted for {student.student_name}')
         return redirect('certifications:index')
