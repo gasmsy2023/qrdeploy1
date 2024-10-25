@@ -3,8 +3,8 @@ from .models import Issuer, Student, QRCodeCustomization, CertificateTemplate, C
 
 @admin.register(Issuer)
 class IssuerAdmin(admin.ModelAdmin):
-    list_display = ('name_en', 'name_ar')
-    search_fields = ('name_en', 'name_ar')
+    list_display = ('name_en',)
+    search_fields = ('name_en',)
 
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):

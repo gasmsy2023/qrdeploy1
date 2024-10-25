@@ -67,9 +67,8 @@ class CSVUploadForm(forms.Form):
 class IssuerForm(forms.ModelForm):
     class Meta:
         model = Issuer
-        fields = ['name_ar', 'name_en', 'signature']
+        fields = ['name_en', 'signature']
         widgets = {
-            'name_ar': forms.TextInput(attrs={'class': 'form-control'}),
             'name_en': forms.TextInput(attrs={'class': 'form-control'}),
             'signature': forms.ClearableFileInput(attrs={'class': 'form-control-file'}),
         }

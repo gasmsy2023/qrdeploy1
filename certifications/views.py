@@ -34,6 +34,76 @@ def index(request):
 
     return render(request, 'index.html', {'students': students})
 
+def download_sample_csv(request):
+    # Create a new CSV file in memory
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="sample_students.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow(['student_name', 'student_id', 'programm', 'degree_obtained', 'issuer_name_en'])
+    
+    # Add a sample row
+    writer.writerow(['John Doe', '12345', 'Computer Science', 'Bachelor of Science', 'University of Example'])
+    
+    return response
+
+def upload_csv(request):
+    if request.method == 'POST':
+        if 'csv_file' not in request.FILES:
+            messages.error(request, 'Please select a CSV file to upload.')
+            return redirect('certifications:upload_csv')
+
+        csv_file = request.FILES['csv_file']
+        if not csv_file.name.endswith('.csv'):
+            messages.error(request, 'File must be a CSV.')
+            return redirect('certifications:upload_csv')
+
+        try:
+            # Read the CSV file
+            decoded_file = csv_file.read().decode('utf-8')
+            csv_data = csv.DictReader(io.StringIO(decoded_file))
+            
+            success_count = 0
+            error_count = 0
+            error_messages = []
+
+            with transaction.atomic():
+                for row in csv_data:
+                    try:
+                        # Get or create issuer
+                        issuer, _ = Issuer.objects.get_or_create(
+                            name_en=row['issuer_name_en']
+                        )
+
+                        # Create student record
+                        student = Student.objects.create(
+                            student_name=row['student_name'],
+                            student_id=int(row['student_id']),
+                            programm=row['programm'],
+                            degree_obtained=row['degree_obtained'],
+                            issuer=issuer
+                        )
+                        success_count += 1
+                    except Exception as e:
+                        error_count += 1
+                        error_messages.append(f"Error in row {success_count + error_count}: {str(e)}")
+                        continue
+
+            if success_count > 0:
+                messages.success(request, f'Successfully imported {success_count} student records.')
+            if error_count > 0:
+                messages.warning(request, f'Failed to import {error_count} records. Check the format and try again.')
+                for error in error_messages:
+                    messages.error(request, error)
+
+        except Exception as e:
+            messages.error(request, f'Error processing CSV file: {str(e)}')
+            return redirect('certifications:upload_csv')
+
+        return redirect('certifications:index')
+
+    return render(request, 'upload_csv.html')
+
 def verify(request, student_id):
     student = get_object_or_404(Student, id=student_id)
     context = {'student': student}
@@ -126,84 +196,6 @@ def download_qr_codes(request):
     response = FileResponse(zip_buffer, as_attachment=True, filename='student_qr_codes_and_data.zip')
     return response
 
-
-def upload_csv(request):
-    if request.method == 'POST':
-        form = CSVUploadForm(request.POST, request.FILES)
-        if form.is_valid():
-            csv_file = form.cleaned_data['csv_file']
-            csv_upload = CSVUpload.objects.create(file=csv_file)
-            
-            decoded_file = csv_file.read().decode('utf-8').splitlines()
-            reader = csv.DictReader(decoded_file)
-
-            success_count = 0
-            error_count = 0
-            error_messages = []
-
-            try:
-                with transaction.atomic():
-                    for row in reader:
-                        try:
-                            issuer = Issuer.objects.get(name_en=row['issuer_name_en'])
-                            student = Student(
-                                student_name=row['student_name'],
-                                student_id=row['student_id'],
-                                programm=row['programm'],
-                                degree_obtained=row['degree_obtained'],
-                                issuer=issuer,
-                                issue_date=row['issue_date'],
-                            )
-                            student.save()
-                            success_count += 1
-                        except Issuer.DoesNotExist:
-                            error_count += 1
-                            error_messages.append(f"Issuer '{row['issuer_name_en']}' does not exist for student {row['student_name']}")
-                        except IntegrityError:
-                            error_count += 1
-                            error_messages.append(f"Duplicate record or QR code link for student {row['student_name']}")
-                        except KeyError as e:
-                            error_count += 1
-                            error_messages.append(f"Missing column {str(e)} for student {row['student_name']}")
-                        except Exception as e:
-                            error_count += 1
-                            error_messages.append(f"Error creating student record for {row['student_name']}: {str(e)}")
-
-            except Exception as e:
-                messages.error(request, f"An error occurred while processing the CSV file: {str(e)}")
-                return redirect('certifications:index')
-
-            if success_count > 0:
-                messages.success(request, f'Successfully created {success_count} student records.')
-            if error_count > 0:
-                messages.warning(request, f'Failed to create {error_count} student records. Check the error log for details.')
-                for error in error_messages:
-                    messages.error(request, error)
-
-            return redirect('certifications:index')
-    else:
-        form = CSVUploadForm()
-
-    return render(request, 'upload_csv.html', {'form': form})
-
-
-def download_sample_csv(request):
-    sample_csv = SampleCSV.objects.first()
-    if not sample_csv:
-        # Create a sample CSV if it doesn't exist
-        buffer = io.StringIO()
-        writer = csv.writer(buffer)
-        writer.writerow(['student_name', 'student_id', 'programm', 'degree_obtained', 'issuer_name_en', 'issue_date'])
-        writer.writerow(['John Doe', '12345', 'Computer Science', 'Bachelor of Science', 'Example University', '2023-05-15'])
-        writer.writerow(['Jane Smith', '67890', 'Data Science', 'Master of Science', 'Example Institute', '2023-05-16'])
-        
-        content = ContentFile(buffer.getvalue().encode('utf-8'), name='sample_students.csv')
-        sample_csv = SampleCSV.objects.create(file=content)
-
-    response = HttpResponse(sample_csv.file, content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="sample_students.csv"'
-    return response
-
 def manage_templates(request):
     templates = CertificateTemplate.objects.all()
     return render(request, 'manage_templates.html', {'templates': templates})
@@ -236,21 +228,6 @@ def delete_template(request, template_id):
     template.delete()
     messages.success(request, 'Certificate template deleted successfully.')
     return redirect('certifications:manage_templates')
-
-def create_student(request):
-    if request.method == 'POST':
-        form = StudentForm(request.POST)
-        if form.is_valid():
-            try:
-                student = form.save(commit=False)
-                student.save()
-                messages.success(request, f'Student record created for {student.student_name}')
-                return redirect('certifications:index')
-            except IntegrityError:
-                messages.error(request, 'Error: This student record already exists or has a duplicate QR code link.')
-    else:
-        form = StudentForm()
-    return render(request, 'student_form.html', {'form': form, 'action': 'Create'})
 
 def edit_student(request, student_id):
     student = get_object_or_404(Student, id=student_id)

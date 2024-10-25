@@ -5,7 +5,6 @@ from django.urls import reverse
 import uuid
 
 class Issuer(models.Model):
-    name_ar = models.CharField('Issuer Name In Arabic', max_length=100)
     name_en = models.CharField('Issuer Name In English', max_length=100)
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     signature = models.ImageField(upload_to='signatures', blank=True)
@@ -57,17 +56,24 @@ class QRCodeCustomization(models.Model):
     def __str__(self):
         return f"QR Code Customization {self.id}"
 
-class CSVUpload(models.Model):
-    file = models.FileField(upload_to='csv_uploads/')
-    uploaded_at = models.DateTimeField(auto_now_add=True)
-    processed = models.BooleanField(default=False)
-
-    def __str__(self):
-        return f"CSV Upload {self.id} - {self.uploaded_at}"
-
 class SampleCSV(models.Model):
     file = models.FileField(upload_to='sample_csv/')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Sample CSV {self.id} - {self.created_at}"
+
+class CSVUpload(models.Model):
+    file = models.FileField(upload_to='uploads/csv/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    processed = models.BooleanField(default=False)
+    total_records = models.IntegerField(default=0)
+    successful_records = models.IntegerField(default=0)
+    failed_records = models.IntegerField(default=0)
+    error_log = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"CSV Upload {self.id} - {self.uploaded_at}"
+
+    class Meta:
+        ordering = ['-uploaded_at']
