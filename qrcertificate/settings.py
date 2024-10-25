@@ -27,20 +27,12 @@ SECRET_KEY = "UUc-qwrxzkZFyx4mrxXFfgHpA1VLOIuAojmk8T9q7n35A6-k-yMhflFooklgflIgL4
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-# 'DJANGO_ALLOWED_HOSTS' should be a single string of hosts with a space between each.
-# For example: 'DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]'
-# it should be a list
-#
-# To allow access through multiple NICs 
-# Less secure if you're not firewalled off or on a public LAN,
-# but it's what I use and it works.
-# ALLOWED_HOSTS = ['*']
-# in env file add: 'DJANGO_ALLOWED_HOSTS=*'
+# Allow all hosts temporarily for debugging
+ALLOWED_HOSTS = ['*']
 
-# ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS").split(" ")
-ALLOWED_HOST = []
+# Update CSRF settings
+CSRF_TRUSTED_ORIGINS = ['https://*.pythonanywhere.com']
 
-CSRF_TRUSTED_ORIGINS = []
 # Application definition
 
 X_FRAME_OPTIONS = 'ALLOWALL'
@@ -54,7 +46,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'qrcode',
-
 ]
 
 MIDDLEWARE = [
@@ -133,7 +124,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 
 # place to collect all static content to
 STATIC_ROOT = BASE_DIR / "public"
@@ -154,5 +145,5 @@ MEDIA_ROOT = BASE_DIR / 'media/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Base URL for the application
-BASE_URL = 'http://certificate.virtualmindshub.com'
+# Base URL for the application - update this with your PythonAnywhere URL
+BASE_URL = 'https://yourusername.pythonanywhere.com'  # Update this with your actual URL
