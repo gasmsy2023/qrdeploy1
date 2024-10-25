@@ -100,11 +100,18 @@ def upload_csv(request):
             
             success_count = 0
             error_count = 0
+            skip_count = 0
             error_messages = []
 
             with transaction.atomic():
                 for row in csv_data:
                     try:
+                        # Check if student with this ID already exists
+                        student_id = int(row['student_id'])
+                        if Student.objects.filter(student_id=student_id).exists():
+                            skip_count += 1
+                            continue
+
                         # Get or create issuer
                         issuer, _ = Issuer.objects.get_or_create(
                             name_en=row['issuer_name_en']
@@ -113,7 +120,7 @@ def upload_csv(request):
                         # Create student record
                         student = Student.objects.create(
                             student_name=row['student_name'],
-                            student_id=int(row['student_id']),
+                            student_id=student_id,
                             programm=row['programm'],
                             degree_obtained=row['degree_obtained'],
                             issuer=issuer
@@ -127,11 +134,13 @@ def upload_csv(request):
                         success_count += 1
                     except Exception as e:
                         error_count += 1
-                        error_messages.append(f"Error in row {success_count + error_count}: {str(e)}")
+                        error_messages.append(f"Error in row {success_count + error_count + skip_count}: {str(e)}")
                         continue
 
             if success_count > 0:
                 messages.success(request, f'Successfully imported {success_count} student records.')
+            if skip_count > 0:
+                messages.info(request, f'Skipped {skip_count} duplicate records.')
             if error_count > 0:
                 messages.warning(request, f'Failed to import {error_count} records. Check the format and try again.')
                 for error in error_messages:
