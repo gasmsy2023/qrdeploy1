@@ -40,10 +40,10 @@ def download_sample_csv(request):
     response['Content-Disposition'] = 'attachment; filename="sample_students.csv"'
     
     writer = csv.writer(response)
-    writer.writerow(['student_name', 'student_id', 'programm', 'degree_obtained', 'issuer_name_en'])
+    writer.writerow(['noms_et_prenoms', 'matricule', 'filiere', 'mention', 'session', 'sexe', 'date_de_naissance', 'lieu_de_naissance', 'numero', 'issuer_name_en'])
     
     # Add a sample row
-    writer.writerow(['John Doe', '12345', 'Computer Science', 'Bachelor of Science', 'University of Example'])
+    writer.writerow(['John Doe', '12345', 'Computer Science', 'Très Bien', '2024', 'M', '2000-01-01', 'Paris', 'CERT001', 'University of Example'])
     
     return response
 
@@ -106,9 +106,9 @@ def upload_csv(request):
             with transaction.atomic():
                 for row in csv_data:
                     try:
-                        # Check if student with this ID already exists
-                        student_id = int(row['student_id'])
-                        if Student.objects.filter(student_id=student_id).exists():
+                        # Check if student with this matricule already exists
+                        matricule = row['matricule']
+                        if Student.objects.filter(matricule=matricule).exists():
                             skip_count += 1
                             continue
 
@@ -119,10 +119,15 @@ def upload_csv(request):
 
                         # Create student record
                         student = Student.objects.create(
-                            student_name=row['student_name'],
-                            student_id=student_id,
-                            programm=row['programm'],
-                            degree_obtained=row['degree_obtained'],
+                            noms_et_prenoms=row['noms_et_prenoms'],
+                            matricule=matricule,
+                            filiere=row['filiere'],
+                            mention=row['mention'],
+                            session=row.get('session', ''),
+                            sexe=row.get('sexe', ''),
+                            date_de_naissance=row.get('date_de_naissance', None),
+                            lieu_de_naissance=row.get('lieu_de_naissance', ''),
+                            numero=row.get('numero', ''),
                             issuer=issuer
                         )
                         
@@ -172,17 +177,22 @@ def download_qr_codes(request):
     # Create a CSV file with student data and QR code links
     csv_buffer = io.StringIO()
     csv_writer = csv.writer(csv_buffer)
-    csv_writer.writerow(['Student Name', 'Student ID', 'Program', 'Degree Obtained', 'Issuer', 'Issue Date', 'QR Code Link'])
+    csv_writer.writerow(['Noms et Prénoms', 'Matricule', 'Filière', 'Mention', 'Session', 'Sexe', 'Date de Naissance', 'Lieu de Naissance', 'Numéro', 'Issuer', 'Issue Date', 'QR Code Link'])
     
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
         for student in students:
             # Write student data to CSV
             csv_writer.writerow([
-                student.student_name,
-                student.student_id,
-                student.programm,
-                student.degree_obtained,
+                student.noms_et_prenoms,
+                student.matricule,
+                student.filiere,
+                student.mention,
+                student.session,
+                student.sexe,
+                student.date_de_naissance,
+                student.lieu_de_naissance,
+                student.numero,
                 student.issuer.name_en,
                 student.issue_date,
                 student.qr_code_link
@@ -247,7 +257,7 @@ def edit_student(request, student_id):
                     qr_code_url = generate_qr_code(student.id)
                     student.qr_code_link = qr_code_url
                     student.save()
-                messages.success(request, f'Student record updated for {student.student_name}')
+                messages.success(request, f'Student record updated for {student.noms_et_prenoms}')
                 return redirect('certifications:index')
             except IntegrityError:
                 messages.error(request, 'Error: This update would result in a duplicate record or QR code link.')
@@ -300,6 +310,6 @@ def delete_student(request, student_id):
             if default_storage.exists(qr_code_path):
                 default_storage.delete(qr_code_path)
         student.delete()
-        messages.success(request, f'Student record deleted for {student.student_name}')
+        messages.success(request, f'Student record deleted for {student.noms_et_prenoms}')
         return redirect('certifications:index')
     return render(request, 'student_confirm_delete.html', {'student': student})

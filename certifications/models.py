@@ -33,20 +33,32 @@ class CertificateTemplate(models.Model):
         return self.name
 
 class Student(models.Model):
-    student_name = models.CharField('Name of Student', max_length=100)
-    student_id = models.IntegerField('Student Identification Number', unique=True)
-    programm = models.CharField('Programme studied', max_length=100)
-    degree_obtained = models.CharField('Degree Obtained', max_length=100)
+    GENDER_CHOICES = [
+        ('M', 'Masculin'),
+        ('F', 'Féminin'),
+    ]
+    
+    noms_et_prenoms = models.CharField('Noms et Prénoms', max_length=100, null=True, blank=True)
+    date_de_naissance = models.DateField('Date de Naissance', null=True, blank=True)
+    lieu_de_naissance = models.CharField('Lieu de Naissance', max_length=100, null=True, blank=True)
+    sexe = models.CharField('Sexe', max_length=1, choices=GENDER_CHOICES, null=True, blank=True)
+    matricule = models.CharField('Matricule', max_length=50, unique=True, null=True, blank=True)
+    mention = models.CharField('Mention', max_length=50, null=True, blank=True)
+    session = models.CharField('Session', max_length=50, null=True, blank=True)
+    filiere = models.CharField('Filière', max_length=100, null=True, blank=True)
+    numero = models.CharField('Numéro', max_length=50, unique=True, null=True, blank=True)
+    
+    # Keeping important relationships and fields
     issuer = models.ForeignKey(Issuer, on_delete=models.CASCADE)
-    issue_date = models.DateTimeField('Certification Issued Date', blank=True, null=True, auto_now_add=True)
+    issue_date = models.DateTimeField('Date de Délivrance', blank=True, null=True, auto_now_add=True)
     template = models.ForeignKey(CertificateTemplate, on_delete=models.SET_NULL, null=True, blank=True)
-    qr_code_link = models.URLField('QR Code Link', max_length=255, unique=True, blank=True, null=True)
+    qr_code_link = models.URLField('Lien QR Code', max_length=255, unique=True, blank=True, null=True)
 
     class Meta:
-        unique_together = ['student_name', 'student_id', 'programm', 'degree_obtained', 'issuer']
+        unique_together = ['noms_et_prenoms', 'matricule', 'filiere', 'session']
 
     def __str__(self):
-        return f"{self.student_name} | {self.student_id}"
+        return f"{self.noms_et_prenoms or ''} | {self.matricule or ''}"
 
 class QRCodeCustomization(models.Model):
     logo = models.ImageField(upload_to='qr_logos', blank=True, null=True)

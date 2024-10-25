@@ -16,7 +16,6 @@ reportlab
 six
 sqlparse
 gunicorn
-psycopg2-binary
 python-dotenv
 
 

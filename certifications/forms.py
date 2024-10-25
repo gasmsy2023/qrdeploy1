@@ -10,42 +10,65 @@ class CertificateTemplateForm(forms.ModelForm):
 class StudentForm(forms.ModelForm):
     class Meta:
         model = Student
-        fields = ['student_name', 'student_id', 'programm', 'degree_obtained', 'issuer', 'template']
+        fields = [
+            'noms_et_prenoms', 
+            'date_de_naissance', 
+            'lieu_de_naissance', 
+            'sexe', 
+            'matricule', 
+            'mention', 
+            'session', 
+            'filiere', 
+            'numero',
+            'issuer', 
+            'template'
+        ]
         widgets = {
-            'student_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'student_id': forms.NumberInput(attrs={'class': 'form-control'}),
-            'programm': forms.TextInput(attrs={'class': 'form-control'}),
-            'degree_obtained': forms.TextInput(attrs={'class': 'form-control'}),
+            'noms_et_prenoms': forms.TextInput(attrs={'class': 'form-control'}),
+            'date_de_naissance': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'lieu_de_naissance': forms.TextInput(attrs={'class': 'form-control'}),
+            'sexe': forms.Select(attrs={'class': 'form-control'}),
+            'matricule': forms.TextInput(attrs={'class': 'form-control'}),
+            'mention': forms.TextInput(attrs={'class': 'form-control'}),
+            'session': forms.TextInput(attrs={'class': 'form-control'}),
+            'filiere': forms.TextInput(attrs={'class': 'form-control'}),
+            'numero': forms.TextInput(attrs={'class': 'form-control'}),
             'issuer': forms.Select(attrs={'class': 'form-control'}),
             'template': forms.Select(attrs={'class': 'form-control'}),
         }
 
-    def clean_student_id(self):
-        student_id = self.cleaned_data.get('student_id')
-        if Student.objects.filter(student_id=student_id).exists():
-            if self.instance and self.instance.student_id == student_id:
-                return student_id
-            raise ValidationError("A student with this ID already exists.")
-        return student_id
+    def clean_matricule(self):
+        matricule = self.cleaned_data.get('matricule')
+        if Student.objects.filter(matricule=matricule).exists():
+            if self.instance and self.instance.matricule == matricule:
+                return matricule
+            raise ValidationError("Un étudiant avec ce matricule existe déjà.")
+        return matricule
+
+    def clean_numero(self):
+        numero = self.cleaned_data.get('numero')
+        if Student.objects.filter(numero=numero).exists():
+            if self.instance and self.instance.numero == numero:
+                return numero
+            raise ValidationError("Un étudiant avec ce numéro existe déjà.")
+        return numero
 
     def clean(self):
         cleaned_data = super().clean()
-        student_name = cleaned_data.get('student_name')
-        student_id = cleaned_data.get('student_id')
-        programm = cleaned_data.get('programm')
-        degree_obtained = cleaned_data.get('degree_obtained')
-        issuer = cleaned_data.get('issuer')
+        noms_et_prenoms = cleaned_data.get('noms_et_prenoms')
+        matricule = cleaned_data.get('matricule')
+        filiere = cleaned_data.get('filiere')
+        session = cleaned_data.get('session')
 
-        if student_name and student_id and programm and degree_obtained and issuer:
+        if noms_et_prenoms and matricule and filiere and session:
             if Student.objects.filter(
-                student_name=student_name,
-                student_id=student_id,
-                programm=programm,
-                degree_obtained=degree_obtained,
-                issuer=issuer
+                noms_et_prenoms=noms_et_prenoms,
+                matricule=matricule,
+                filiere=filiere,
+                session=session
             ).exists():
                 if not (self.instance and self.instance.id):
-                    raise ValidationError("A student with these exact details already exists.")
+                    raise ValidationError("Un étudiant avec ces informations existe déjà.")
         return cleaned_data
 
 class CSVUploadForm(forms.Form):

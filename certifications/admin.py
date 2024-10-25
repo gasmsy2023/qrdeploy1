@@ -8,9 +8,9 @@ class IssuerAdmin(admin.ModelAdmin):
 
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
-    list_display = ('student_name', 'student_id', 'programm', 'degree_obtained', 'issuer', 'issue_date')
-    list_filter = ('issuer', 'degree_obtained', 'issue_date')
-    search_fields = ('student_name', 'student_id', 'programm')
+    list_display = ('noms_et_prenoms', 'matricule', 'filiere', 'mention', 'session', 'issuer', 'issue_date')
+    list_filter = ('issuer', 'mention', 'session', 'filiere', 'issue_date')
+    search_fields = ('noms_et_prenoms', 'matricule', 'numero', 'filiere')
     readonly_fields = ('issue_date',)
 
 @admin.register(QRCodeCustomization)
