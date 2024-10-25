@@ -1,6 +1,7 @@
+
 arabic-reshaper
 asgiref
-Django
+Django==4.0.6
 et-xmlfile
 future
 numpy
